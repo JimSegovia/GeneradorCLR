@@ -1,8 +1,8 @@
 from collections import deque
 from collections import OrderedDict
 from pprint import pprint
-import Primeros_y_Siguientes
-from Primeros_y_Siguientes import production_list, nt_list as ntl, t_list as tl
+import primerosysiguientes
+from primerosysiguientes import production_list, nt_list as ntl, t_list as tl
 
 LAMBDA = 'λ'
 
@@ -134,7 +134,7 @@ def closure(items):
 
             for la in i.lookahead:
                 sequence = beta + [la]
-                result = firstfollow.compute_first_sequence(sequence)
+                result = primerosysiguientes.compute_first_sequence(sequence)
                 lookaheads.update(result)
 
             for prod in production_list:
@@ -330,7 +330,7 @@ def augment_grammar():
         if new_start not in ntl:
             start_prod = production_list[0]
             production_list.insert(0, new_start + '→' + start_prod.split('→')[0])
-            ntl[new_start] = firstfollow.NonTerminal(new_start)  # <- Añadido
+            ntl[new_start] = primerosysiguientes.NonTerminal(new_start)  # <- Añadido
             return
 
 
@@ -341,17 +341,17 @@ def main():
     non_terminal_input = input().strip()
     non_terminal_symbols = non_terminal_input.split('|')
 
-    firstfollow.nt_list.clear()
+    primerosysiguientes.nt_list.clear()
     for nt in non_terminal_symbols:
-        firstfollow.nt_list[nt] = firstfollow.NonTerminal(nt)
+        primerosysiguientes.nt_list[nt] = primerosysiguientes.NonTerminal(nt)
 
     print("\nIngresa los símbolos TERMINALES separados por |:")
     terminal_input = input().strip()
     terminal_symbols = terminal_input.split('|')
 
-    firstfollow.t_list.clear()
+    primerosysiguientes.t_list.clear()
     for term in terminal_symbols:
-        firstfollow.t_list[term] = firstfollow.Terminal(term)
+        primerosysiguientes.t_list[term] = primerosysiguientes.Terminal(term)
 
     print("\nPega tus producciones (una por línea).")
     print("Cuando termines, presiona Enter en una línea vacía:")
@@ -372,17 +372,17 @@ def main():
 
     production_list[:] = user_productions
 
-    firstfollow.main(production_list)
+    primerosysiguientes.main(production_list)
 
     print("\tFIRST AND FOLLOW OF NON-TERMINALS")
     for nt in ntl:
-        firstfollow.compute_first(nt)
-        firstfollow.compute_follow(nt)
-        first = sorted(firstfollow.get_first(nt))
-        follow = sorted(firstfollow.get_follow(nt))
+        primerosysiguientes.compute_first(nt)
+        primerosysiguientes.compute_follow(nt)
+        first = sorted(primerosysiguientes.get_first(nt))
+        follow = sorted(primerosysiguientes.get_follow(nt))
         print(nt)
-        print("\tFirst:\t", firstfollow.get_first(nt))
-        print("\tFollow:\t", firstfollow.get_follow(nt), "\n")
+        print("\tFirst:\t", primerosysiguientes.get_first(nt))
+        print("\tFollow:\t", primerosysiguientes.get_follow(nt), "\n")
 
     augment_grammar()
 
