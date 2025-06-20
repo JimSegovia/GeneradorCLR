@@ -333,7 +333,7 @@ def augment_grammar():
             ntl[new_start] = primerosysiguientes.NonTerminal(new_start)  # <- Añadido
             return
 
-
+import sys
 def main():
     global production_list, ntl, nt_list, tl, t_list
 
@@ -370,6 +370,11 @@ def main():
         print("No se ingresaron producciones. Finalizando.")
         return
 
+    # Toda la salida en .txt
+    with open("salida_clr1.txt", "w", encoding="utf-8") as f:
+        original_stdout = sys.stdout
+        sys.stdout = f  # Redirige toda la salida print al archivo
+    # Aqui acaba
     production_list[:] = user_productions
 
     primerosysiguientes.main(production_list)
@@ -393,6 +398,9 @@ def main():
     print(t_list, "\n")
 
     j = calc_states()
+
+    #CON ESTE EXPORTAMOS EN PDF
+    #export_items_to_pdf(j, codigos_equivalentes, filename="items_clr1.pdf")
 
     ctr = 0
     for idx, state in enumerate(j):
@@ -434,44 +442,15 @@ def main():
                     print(f"⚠️ RR conflict en estado {i}, símbolo '{simbolo_legible}' => acciones: {acciones_list}")
 
     print("\n", sr, "s/r conflicts |", rr, "r/r conflicts")
-    #export_table_as_java_format(table)
-    export_table_as_csv_format(table)
+    #export_table_as_csv_format(table)
+
+    # EXPORTAR TABLA COMO .CSV
+    #export_clr1_table_full_csv(table, "tabla_clr1_completa.csv")
+
+    # EXPORTAR SALIDA COMO .TXT
+    #sys.stdout = original_stdout  # Restaurar salida estándar
+    #print("✅ Archivo 'salida_clr1.txt' generado correctamente.")
     return
-
-def export_table_as_java_format(table):
-    print("\n// --- TABLA CLR(1) en formato estilo Java ---\n")
-    print("Map<Integer, Map<String, String>> tabla = new HashMap<>();\n")
-
-    for state_no, transitions in table.items():
-        print(f"Map<String, String> fila{state_no} = new HashMap<>();")
-
-        for symbol, action in transitions.items():
-            if isinstance(action, set):
-                action_str = list(action)[0]  # Tomamos uno (en caso de conflicto)
-            else:
-                action_str = action
-
-            symbol_key = "36" if symbol == "$" else symbol
-            lexema = codigos_equivalentes.get(symbol, symbol)
-
-            # Determinar tipo de acción y construir comentario
-            if action_str == "Aceptar":
-                comentario = "// Aceptar entrada"
-            elif action_str.startswith("d"):
-                comentario = f"// Desplazar a estado {action_str[1:]} por símbolo {lexema}"
-            elif action_str.startswith("r"):
-                prod_num = int(action_str[1:])
-                if 0 <= prod_num < len(production_list):
-                    comentario = f"// Reducir con producción {prod_num} por símbolo {lexema}  "
-                # : {production_list[prod_num]}
-                else:
-                    comentario = f"// Reducir con producción {prod_num} por símbolo {lexema}"
-            else:
-                comentario = f"// Ir a estado {action_str} por símbolo {lexema}"
-
-            print(f'fila{state_no}.put("{symbol_key}", "{action_str}"); {comentario}')
-
-        print(f"tabla.put({state_no}, fila{state_no});\n")
 
 def export_table_as_csv_format(table):
     print("estado,símbolo,acción")  # Encabezado CSV
@@ -490,6 +469,87 @@ def export_table_as_csv_format(table):
                     print(f"{estado},{simbolo_codificado},{a}")
             else:
                 print(f"{estado},{simbolo_codificado},{accion}")
+
+import csv
+
+def export_clr1_table_full_csv(table, filename="tabla_clr1_completa.csv"):
+    # 1. Obtener todos los símbolos legibles posibles para usar como encabezados
+    all_symbols = set()
+    for fila in table.values():
+        all_symbols.update(fila.keys())
+
+    # Convertir a símbolos legibles
+    encabezado = ["estado"] + [codigos_equivalentes.get(s, s) for s in sorted(all_symbols)]
+
+    # 2. Escribir CSV
+    with open(filename, "w", newline='', encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(encabezado)
+
+        for estado, fila in table.items():
+            fila_csv = [estado]
+            for simbolo in sorted(all_symbols):
+                accion = fila.get(simbolo, "")
+                if isinstance(accion, set):
+                    accion_str = '|'.join(sorted(accion))
+                else:
+                    accion_str = accion
+                fila_csv.append(accion_str)
+            writer.writerow(fila_csv)
+
+    print(f"✅ Tabla CLR(1) exportada como CSV en: {filename}")
+
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import inch
+import textwrap
+
+def export_items_to_pdf(states, codigos_equivalentes, filename="items_clr1.pdf"):
+    c = canvas.Canvas(filename, pagesize=A4)
+
+    width, height = A4
+    margin = inch
+    y = height - margin
+
+    c.setFont("Times-Roman", 12)
+
+    for idx, state in enumerate(states):
+        # Título del estado
+        titulo = f"Item{idx}{{"
+        c.drawString(margin, y, titulo)
+        y -= 16
+
+        for item in state:
+            # Preparar el string legible
+            item_str = item.replace(".", "●").replace("→", "->")
+            for codigo, texto in codigos_equivalentes.items():
+                item_str = item_str.replace(codigo, texto)
+
+            for la in item.lookahead:
+                la_str = codigos_equivalentes.get(la, la)
+                line = f"[ {item_str}, {la_str} ]"
+
+                # 🔽 Ajustamos si la línea es demasiado larga (Aprox 90 caracteres por línea)
+                wrapped_lines = textwrap.wrap(line, width=90)
+                for wrapped_line in wrapped_lines:
+                    if y < margin:
+                        c.showPage()
+                        c.setFont("Times-Roman", 12)
+                        y = height - margin
+                    c.drawString(margin, y, wrapped_line)
+                    y -= 14
+
+        # Cierre de bloque
+        if y < margin:
+            c.showPage()
+            c.setFont("Times-Roman", 12)
+            y = height - margin
+        c.drawString(margin, y, "}")
+        y -= 20
+
+    c.save()
+    print(f"✅ PDF generado: {filename}")
+
 
 if __name__ == "__main__":
     main()

@@ -93,8 +93,7 @@ entrada = """
 | <AsignacionObj>
 	| <AsignacionArreglo>
 | <AsignacionElemArr>
-| <AsignacionIdSimple>
-| <AsignacionIdConArray>
+| <AsignacionIdSimple> | <AsignacionIdConArray>
 <DeclSimple>→  <ListaIds> ; | 
 <DeclInicializada>  | 
 <Arreglos> ;
@@ -115,7 +114,6 @@ entrada = """
 <AsignacionIdSimple>→ id =  <Valor> ;
 <AsignacionIdConArray>→ id [ <ExprAritmeticas> ] = <Valor> ; 
 <AsignacionElemArr>→ id [ <ExprAritmeticas> ] = NUEVO id ( <Argumentos> ) ;
-
 
 	<ObjDirectoParametro>→ NUEVO id ( <Argumentos> )
 
@@ -157,9 +155,7 @@ entrada = """
 | <Metodo> <Miembros> 
 | <Constructor> <Miembros> 
 |  λ
-
 <Constructor> → INICIAR id ( <Parametros> ) <BloqueInstr> 
-
 <Atributo> → <Acceso>  <DeclVariable> 
 
 <Acceso> → libre | encerrado | protect | λ 
@@ -168,7 +164,7 @@ entrada = """
 <Met> → <MetodoConRetorno> | <MetodoSinRetorno>
 <MetodoConRetorno> → <TipoPrimitivo> <MetPrefijo> id ( <Parametros> )  { <ListaInstr>  devolver  <Valor> ; }
 <MetodoSinRetorno> →  corpse <MetPrefijo> id ( <Parametros> ) <BloqueInstr> 
-
+ 
 <MetPrefijo> → met-> | acced-> | modif-> 
 
 <FuncionesGlobales> → compor <Func>
@@ -197,13 +193,11 @@ entrada = """
 
 <Rugg> → rugg ( <ExpreParaRugg> ) ;
 <Reci> → reci (  id ) ;
-<ExpreParaRugg> → <Valor> <MasExpreParaRugg> ;
+<ExpreParaRugg> → <Valor> <MasExpreParaRugg> 
 <MasExpreParaRugg> → <<  <ExpreParaRugg>  | λ
-
 
 <ExpreCompletas> → <Expre> | <Llamadas>
 <Expre> → <ExprLogica> | <ExprAritmeticas> | <Booleanos>
-
 
 <ExprAritmeticas> → <Termino> <ExprAritmeticas’>
 <ExprAritmeticas’> → <OpeSumaResta> <Termino> <ExprAritmeticas’> | λ
@@ -243,8 +237,6 @@ entrada = """
                   | λ
 <ReaccionBloque> → reaccion <definicion> : <BloqueInstr>
                  | reaccion <definicion> : <BloqueInstr> huir ;
-
-
 <BloqueInstrHuir> → <BloqueInstr> huir ;
 <ListaReaccion> → <ReaccionBloque> <ListaReaccion> | λ
 <definicion> →lit_ent | lit_char
