@@ -1,88 +1,27 @@
-from collections import deque
-from collections import OrderedDict
-from pprint import pprint
+from collections import defaultdict
 import primerosysiguientes
 from primerosysiguientes import production_list, nt_list as ntl, t_list as tl
+import csv
+import sys
 
 LAMBDA = 'λ'
 
 codigos_equivalentes = {
-'400': 'initHabit',
-'401': 'mainZoo',
-'402': 'finHabit',
-'403': 'classHabit',
-'404': 'acced->',
-'405': 'modif->',
-'406': 'met->',
-'407': 'libre',
-'408': 'encerrado',
-'409': 'protect',
-'410': 'compor',
-'411': 'ent',
-'412': 'ant',
-'413': 'boul',
-'414': 'corpse',
-'415': 'stloro',
-'416': 'char',
-'417': 'self',
-'418': 'NUEVO',
-'419': 'INICIAR',
-'420': 'TORT',
-'421': 'devolver',
-'422': 'rugg',
-'423': 'reci',
-'424': 'cama',
-'425': 'leon',
-'426': 'merodear',
-'427': 'rondar',
-'428': 'me',
-'429': 'instinto',
-'430': 'instintoFinal',
-'431': 'reaccion',
-'432': 'huir',
-'433': 'verdad',
-'434': 'falso',
-'435': '==',
-'436': '!=',
-'437': '<',
-'438': '<=',
-'439': '>',
-'440': '>=',
-'441': 'Y¡',
-'442': 'O¡',
-'443': '!',
-'444': '+',
-'445': '-',
-'446': '*',
-'447': '/',
-'448': '++',
-'449': '--',
-'450': '(',
-'451': ')',
-'452': '{',
-'453': '}',
-'454': '[',
-'455': ']',
-'456': ';',
-'457': ':',
-'458': ',',
-'459': '.',
-'460': '..',
-'461': '<<',
-'500': 'id',
-'501': 'lit_str',
-'502': 'lit_char',
-'503': 'lit_ent',
-'504': 'lit_decimal',
-'505': 'comentario',
-'506': '=',
-'507': '=>',
-'911': 'ERROR',
-'999': 'EOF'
-#eliminar si es necesario
+    'k': 300, 'f': 301, 'id': 100, 'C': 400, 'V': 401,
+    'E': 402, 'R': 403, 'L': 404, 'P': 405, ',': 200,
+    ';': 201, '=': 202, '*': 203, '+': 204, '(': 205,
+    ')': 206, ':': 207
 }
 
-from collections import defaultdict
+def codificar(simbolo):
+    return str(codigos_equivalentes.get(simbolo, simbolo))
+
+def decodificar(codigo):
+    for k, v in codigos_equivalentes.items():
+        if str(v) == str(codigo):
+            return k
+    return str(codigo)
+
 
 def generar_tabla_ll1():
     tabla = defaultdict(dict)
@@ -103,21 +42,50 @@ def generar_tabla_ll1():
 
     return tabla
 
-
 def exportar_tabla_ll1_cpp(tabla):
     print("\n// --- TABLA LL(1) en formato estilo C++ ---")
     print("TABLA::TABLA() {")
-
     for nt, fila in tabla.items():
         for term, prod_idx in fila.items():
             prod_rhs = production_list[prod_idx].split("→")[1].strip()
-            cod_term = "36" if term == "$" else term
-            simbolo_legible = codigos_equivalentes.get(term, term)
+            cod_term = "36" if term == "$" else codificar(term)
+            simbolo_legible = codificar(term)
             print(f'    c(M["{nt}"]["{cod_term}"], "{prod_rhs}"); // Producción {prod_idx} por {simbolo_legible}')
-
     print("}")
 
-import sys
+def exportar_tabla_ll1_csv(tabla, filename):
+    terminales = sorted(tl.keys()) + ["$"]
+    terminales_legibles = [decodificar(t) if t != "$" else "$" for t in terminales]
+
+    with open(filename, mode="w", newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        header = ["NT \\ T"] + terminales_legibles
+        writer.writerow(header)
+
+        for nt in ntl:
+            fila = [nt]
+            for t in terminales:
+                prod_idx = tabla.get(nt, {}).get(t, "")
+                if prod_idx != "":
+                    prod_rhs = production_list[prod_idx].split("→")[1].strip()
+                    cuerpo_legible = " ".join([decodificar(tok) for tok in prod_rhs.split()])
+                    fila.append(cuerpo_legible)
+                else:
+                    fila.append("")
+            writer.writerow(fila)
+
+def exportar_first_follow_csv(filename):
+    with open(filename, mode="w", newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(["No Terminal", "First", "Follow"])
+
+        for nt in ntl:
+            primerosysiguientes.compute_first(nt)
+            primerosysiguientes.compute_follow(nt)
+            first_nombres = [decodificar(s) for s in primerosysiguientes.get_first(nt)]
+            follow_nombres = [decodificar(s) for s in primerosysiguientes.get_follow(nt)]
+            writer.writerow([nt, ", ".join(first_nombres), ", ".join(follow_nombres)])
+
 def main():
     global production_list, ntl, nt_list, tl, t_list
 
@@ -148,37 +116,37 @@ def main():
                 break
             user_productions.append(line.strip())
     except EOFError:
-        pass  # Por si usas redirección o termina entrada con Ctrl+D (Linux/Mac)
+        pass
 
     if not user_productions:
         print("No se ingresaron producciones. Finalizando.")
         return
 
-    # Toda la salida en .txt
+    production_list[:] = user_productions
+    primerosysiguientes.main(production_list)
+
+    # Guardar todo en salida.txt
     with open("salida_clr1.txt", "w", encoding="utf-8") as f:
         original_stdout = sys.stdout
-        sys.stdout = f  # Redirige toda la salida print al archivo
-    # Aqui acaba
-    production_list[:] = user_productions
+        sys.stdout = f
 
-    primerosysiguientes.main(production_list)
+        print("\tFIRST AND FOLLOW OF NON-TERMINALS")
+        for nt in ntl:
+            primerosysiguientes.compute_first(nt)
+            primerosysiguientes.compute_follow(nt)
+            print(nt)
+            print("\tFirst:\t", [codificar(s) for s in primerosysiguientes.get_first(nt)])
+            print("\tFollow:\t", [codificar(s) for s in primerosysiguientes.get_follow(nt)], "\n")
 
-    production_list[:] = user_productions
-    primerosysiguientes.main(production_list)
+        tabla_ll1 = generar_tabla_ll1()
+        exportar_tabla_ll1_cpp(tabla_ll1)
 
-    print("\tFIRST AND FOLLOW OF NON-TERMINALS")
-    for nt in ntl:
-        primerosysiguientes.compute_first(nt)
-        primerosysiguientes.compute_follow(nt)
-        print(nt)
-        print("\tFirst:\t", primerosysiguientes.get_first(nt))
-        print("\tFollow:\t", primerosysiguientes.get_follow(nt), "\n")
+        sys.stdout = original_stdout
 
-
-    # LL(1) desde aquí
+    # Exportar CSVs
     tabla_ll1 = generar_tabla_ll1()
-    exportar_tabla_ll1_cpp(tabla_ll1)
-    return
+    exportar_tabla_ll1_csv(tabla_ll1, "tabla_ll1.csv")
+    exportar_first_follow_csv("primeros_siguientes.csv")
 
 if __name__ == "__main__":
     main()
