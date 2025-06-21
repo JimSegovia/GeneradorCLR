@@ -48,10 +48,16 @@ def exportar_tabla_ll1_cpp(tabla):
     for nt, fila in tabla.items():
         for term, prod_idx in fila.items():
             prod_rhs = production_list[prod_idx].split("→")[1].strip()
-            cod_term = "36" if term == "$" else codificar(term)
-            simbolo_legible = codificar(term)
-            print(f'    c(M["{nt}"]["{cod_term}"], "{prod_rhs}"); // Producción {prod_idx} por {simbolo_legible}')
+
+            # Usar '&' si la producción es λ (vacía)
+            prod_cpp = "&" if prod_rhs == LAMBDA else prod_rhs
+
+            cod_term = codificar(term)
+            simbolo_legible = decodificar(term)
+
+            print(f'    c(M["{nt}"]["{cod_term}"], "{prod_cpp}"); // Producción {prod_idx} por {simbolo_legible}')
     print("}")
+
 
 def exportar_tabla_ll1_csv(tabla, filename):
     terminales = sorted(tl.keys()) + ["$"]
@@ -68,10 +74,14 @@ def exportar_tabla_ll1_csv(tabla, filename):
                 prod_idx = tabla.get(nt, {}).get(t, "")
                 if prod_idx != "":
                     prod_rhs = production_list[prod_idx].split("→")[1].strip()
-                    cuerpo_legible = " ".join([decodificar(tok) for tok in prod_rhs.split()])
+                    if prod_rhs == LAMBDA:
+                        cuerpo_legible = LAMBDA  # Mostrar λ explícitamente
+                    else:
+                        cuerpo_legible = " ".join([decodificar(tok) for tok in prod_rhs.split()])
                     fila.append(cuerpo_legible)
                 else:
                     fila.append("")
+
             writer.writerow(fila)
 
 def exportar_first_follow_csv(filename):
